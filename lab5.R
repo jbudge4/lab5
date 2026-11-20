@@ -162,3 +162,104 @@ print(zi_pois)
 if (interactive()) {
   plot(res_pois)
 }
+
+# Part 4. Fit and evaluate a negative binomial model
+
+## ----part4-nb
+m_nb <- glmmTMB(
+  visits ~ chronic + health + gender + school + insurance,
+  data = data,
+  family = nbinom2(link = "log")
+)
+
+## ----part4-anova
+lrt_nb <- anova(m2_full, m_nb)
+
+## ----part4-dharma
+# Set the shared seed before calling DHARMa so clean R and Quarto runs agree.
+set.seed(dharma_seed)
+res_nb <- simulateResiduals(m_nb, n = 500, plot = FALSE, seed = NULL)
+
+## ----part4-tests
+disp_nb <- testDispersion(res_nb, plot = FALSE)
+zi_nb <- testZeroInflation(res_nb, plot = FALSE)
+
+## ----part4-predictions
+# Predict mean visits at every observed number of chronic conditions.
+pred_nb <- predict_response(
+  m_nb,
+  terms = "chronic [all]",
+  condition = c(school = mean(data$school))
+)
+
+pred_nb_plot <- plot(pred_nb) +
+  labs(
+    title = "Predicted physician office visits by chronic conditions",
+    x = "Number of chronic conditions",
+    y = "Predicted mean visits"
+  )
+
+## ----part4-console
+print(summary(m_nb))
+print(lrt_nb)
+print(disp_nb)
+print(zi_nb)
+print(pred_nb, n = Inf)
+
+if (interactive()) {
+  plot(res_nb)
+  print(pred_nb_plot)
+}
+
+# Part 5. Decide whether the zeros need their own model
+
+## ----part5-zero-models
+# Zero-inflated NB with the same predictors in the count and zero parts.
+m_zinb_full <- glmmTMB(
+  visits ~ chronic + health + gender + school + insurance,
+  ziformula = ~ chronic + health + gender + school + insurance,
+  data = data,
+  family = nbinom2(link = "log")
+)
+
+# Hurdle NB uses the zero part for all zeros and a truncated model for positive counts.
+m_hurd <- glmmTMB(
+  visits ~ chronic + health + gender + school + insurance,
+  ziformula = ~ chronic + health + gender + school + insurance,
+  data = data,
+  family = truncated_nbinom2(link = "log")
+)
+
+## ----part5-compare
+lrt_zinb <- anova(m_nb, m_zinb_full)
+
+aic_zero <- AIC(m_nb, m_zinb_full, m_hurd)
+bic_zero <- BIC(m_nb, m_zinb_full, m_hurd)
+
+zero_comparison <- tibble(
+  Model = c("NB2", "ZINB", "Hurdle NB"),
+  AIC = aic_zero$AIC,
+  BIC = bic_zero$BIC
+)
+
+zero_comparison_table <- zero_comparison |>
+  gt() |>
+  tab_header(title = "Fit comparison for the negative binomial models") |>
+  fmt_number(columns = c(AIC, BIC), decimals = 2)
+
+## ----part5-dharma
+# Re-check the hurdle model, which has the lowest AIC and BIC.
+set.seed(dharma_seed)
+res_hurd <- simulateResiduals(m_hurd, n = 500, plot = FALSE, seed = NULL)
+disp_hurd <- testDispersion(res_hurd, plot = FALSE)
+zi_hurd <- testZeroInflation(res_hurd, plot = FALSE)
+
+## ----part5-console
+print(lrt_zinb)
+print(zero_comparison)
+print(disp_hurd)
+print(zi_hurd)
+
+if (interactive()) {
+  plot(res_hurd)
+}

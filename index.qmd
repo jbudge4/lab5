@@ -133,3 +133,93 @@ The dispersion ratio was `r sprintf("%.2f", disp_pois$statistic)` (simulation *p
 ### 3.3. Interpret the diagnostics
 
 The Q–Q plot bends away from the diagonal, and residuals pile up near both ends of the right panel. This suggests the Poisson model struggles with very low and very high counts. The dispersion ratio was `r sprintf("%.2f", disp_pois$statistic)`, and there were `r sprintf("%.2f", zi_pois$statistic)` times as many zeros as expected. Poisson assumes the variance equals the mean. With extra variation, its standard errors and *p*-values tend to be too small and its confidence intervals too narrow. I’ll check whether a negative binomial model’s extra spread can account for the zeros before adding a separate model for them.
+
+## Part 4. Fit and evaluate a negative binomial model
+
+### 4.1. Estimate the NB2 model
+
+```{r part4-nb}
+```
+
+The negative binomial model uses the same predictors as the full Poisson model.
+
+### 4.2. Compare the Poisson and NB2 models
+
+```{r part4-anova}
+```
+
+The likelihood-ratio test comparing NB2 with the full Poisson model gave χ² = `r formatC(lrt_nb[2, "Chisq"], format = "f", digits = 2, big.mark = ",")` with `r lrt_nb[2, "Chi Df"]` degree of freedom (*p* `r format.pval(lrt_nb[2, "Pr(>Chisq)"], digits = 3, eps = .001)`).
+
+NB2 fits significantly better than the full Poisson model. The single degree of freedom comes from the extra parameter NB2 uses to estimate the spread of the counts. In the DHARMa plots below, the Q–Q points are closer to the diagonal, and the dispersion test suggests NB2 captures the overall spread. The Poisson model underestimated that spread, so its standard errors were likely too small. The red curves still bend, and NB2 still predicts too few zeros.
+
+### 4.3. Re-check the NB2 model with DHARMa
+
+```{r part4-dharma}
+```
+
+```{r}
+#| label: fig-nb-dharma
+#| fig-cap: "DHARMa residual diagnostics for the negative binomial model."
+#| fig-alt: "DHARMa Q–Q and residuals-versus-predicted plots for the negative binomial model."
+#| fig-width: 9
+#| fig-height: 4.5
+plot(res_nb)
+```
+
+```{r part4-tests}
+```
+
+The dispersion ratio was `r sprintf("%.2f", disp_nb$statistic)` (simulation *p* = `r format.pval(disp_nb$p.value, digits = 3, eps = 0)`). The ratio of observed to expected zeros was `r sprintf("%.2f", zi_nb$statistic)` (simulation *p* = `r format.pval(zi_nb$p.value, digits = 3, eps = 0)`).
+
+### 4.4. Visualize predicted counts
+
+```{r part4-predictions}
+```
+
+```{r}
+#| label: fig-nb-predicted-visits
+#| fig-cap: "Predicted mean visits by number of chronic conditions. The shaded band shows the confidence interval for the mean."
+#| fig-alt: "Line chart of predicted physician office visits across the observed numbers of chronic conditions."
+pred_nb_plot
+```
+
+The predictions hold years of schooling at its mean and health, gender, and insurance at their reference levels. With the log link, each extra chronic condition raises predicted visits by the same percentage. That adds more visits when the predicted count is already higher, so the line curves upward.
+
+## Part 5. Decide whether the zeros need their own model
+
+### 5.1. Compare models for the zeros
+
+The NB2 model’s ratio of observed to expected zeros was `r sprintf("%.2f", zi_nb$statistic)` (simulation *p* = `r format.pval(zi_nb$p.value, digits = 3, eps = 0)`). Because NB2 still expected too few zeros, I fitted a zero-inflated NB model and a hurdle NB model, using the same predictors for the visit counts and for the zeros.
+
+```{r part5-zero-models}
+```
+
+```{r part5-compare}
+```
+
+The likelihood-ratio test comparing ZINB with NB2 gave χ² = `r sprintf("%.2f", lrt_zinb[2, "Chisq"])` with `r lrt_zinb[2, "Chi Df"]` degrees of freedom (*p* `r format.pval(lrt_zinb[2, "Pr(>Chisq)"], digits = 3, eps = .001)`).
+
+```{r}
+#| label: tbl-zero-comparison
+zero_comparison_table
+```
+
+I used DHARMa to re-check the hurdle model, which had the lowest AIC and BIC.
+
+```{r part5-dharma}
+```
+
+```{r}
+#| label: fig-hurdle-dharma
+#| fig-cap: "DHARMa residual diagnostics for the hurdle negative binomial model."
+#| fig-alt: "DHARMa Q–Q and residuals-versus-predicted plots for the hurdle model."
+#| fig-width: 9
+#| fig-height: 4.5
+plot(res_hurd)
+```
+
+The hurdle model’s dispersion ratio was `r sprintf("%.2f", disp_hurd$statistic)` (simulation *p* = `r format.pval(disp_hurd$p.value, digits = 3, eps = 0)`). Its ratio of observed to expected zeros was `r sprintf("%.3f", zi_hurd$statistic)` (simulation *p* = `r format.pval(zi_hurd$p.value, digits = 3, eps = 0)`).
+
+### 5.2. Justify the model choice
+
+I would carry forward the hurdle model. The zero-inflated model fit better than NB2, and the hurdle model had the lowest AIC and BIC of all three. It expected about `r round(mean(colSums(res_hurd$simulatedResponse == 0)))` people with no visits, close to the `r sum(data$visits == 0)` we observed. It still slightly underestimates how much visit counts vary.
