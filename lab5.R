@@ -144,3 +144,21 @@ print(tests)
 if (interactive()) {
   plot(res_gauss)
 }
+
+# Part 3. Evaluate the Poisson model
+
+## ----part3-dharma
+# Use the same seed and number of simulations as for the Gaussian model.
+res_pois <- simulateResiduals(m2_full, n = 500, plot = FALSE, seed = dharma_seed)
+
+## ----part3-tests
+disp_pois <- testDispersion(res_pois, plot = FALSE)
+zi_pois <- testZeroInflation(res_pois, plot = FALSE)
+
+## ----part3-console
+print(disp_pois)
+print(zi_pois)
+
+if (interactive()) {
+  plot(res_pois)
+}

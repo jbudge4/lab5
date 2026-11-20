@@ -106,3 +106,30 @@ poisson_table
 The comparison of the chronic model with the null model gave χ² = `r sprintf("%.2f", comparison_table$Nested.Chisq.stat[2])` with `r comparison_table$Nested.df[2]` degree of freedom (*p* `r format.pval(comparison_table$Nested.p.value[2], digits = 3, eps = .001)`). The comparison of the full model with the chronic model gave χ² = `r sprintf("%.2f", comparison_table$Nested.Chisq.stat[3])` with `r comparison_table$Nested.df[3]` degrees of freedom (*p* `r format.pval(comparison_table$Nested.p.value[3], digits = 3, eps = .001)`).
 
 The likelihood-ratio tests showed that adding chronic conditions improved the fit over the null model. Adding health, gender, schooling, and insurance improved the fit further. I chose M2 as the Poisson model to carry forward because it had the highest (least negative) log-likelihood, so it fit the observed visit counts best of the three models. M2 also had the lowest AIC and BIC, so it was still preferred after accounting for the extra predictors. I’ll check how well M2 fits the data in Part 3.
+
+## Part 3. Evaluate the Poisson model
+
+### 3.1. Simulate residuals
+
+```{r part3-dharma}
+```
+
+```{r}
+#| label: fig-poisson-dharma
+#| fig-cap: "DHARMa residual diagnostics for the full Poisson model."
+#| fig-alt: "DHARMa Q–Q and residuals-versus-predicted plots for the full Poisson model."
+#| fig-width: 9
+#| fig-height: 4.5
+plot(res_pois)
+```
+
+### 3.2. Test for overdispersion and excess zeros
+
+```{r part3-tests}
+```
+
+The dispersion ratio was `r sprintf("%.2f", disp_pois$statistic)` (simulation *p* = `r format.pval(disp_pois$p.value, digits = 3, eps = 0)`). The ratio of observed to expected zeros was `r sprintf("%.2f", zi_pois$statistic)` (simulation *p* = `r format.pval(zi_pois$p.value, digits = 3, eps = 0)`). A simulation *p*-value displayed as zero means none of the `r res_pois$nSim` simulations was as extreme as the observed result.
+
+### 3.3. Interpret the diagnostics
+
+The Q–Q plot bends away from the diagonal, and residuals pile up near both ends of the right panel. This suggests the Poisson model struggles with very low and very high counts. The dispersion ratio was `r sprintf("%.2f", disp_pois$statistic)`, and there were `r sprintf("%.2f", zi_pois$statistic)` times as many zeros as expected. Poisson assumes the variance equals the mean. With extra variation, its standard errors and *p*-values tend to be too small and its confidence intervals too narrow. I’ll check whether a negative binomial model’s extra spread can account for the zeros before adding a separate model for them.
