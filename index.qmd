@@ -223,3 +223,108 @@ The hurdle model’s dispersion ratio was `r sprintf("%.2f", disp_hurd$statistic
 ### 5.2. Justify the model choice
 
 I would carry forward the hurdle model. The zero-inflated model fit better than NB2, and the hurdle model had the lowest AIC and BIC of all three. It expected about `r round(mean(colSums(res_hurd$simulatedResponse == 0)))` people with no visits, close to the `r sum(data$visits == 0)` we observed. It still slightly underestimates how much visit counts vary.
+
+## Part 6. Test and probe an interaction
+
+### 6.1. State the prediction
+
+I expect the link between chronic conditions and doctor visits to be stronger for people with private insurance. Private insurance may make it easier to get follow-up care as health needs increase.
+
+### 6.2. Fit the interaction model
+
+```{r part6-interaction}
+```
+
+The interaction is in the count part of the hurdle model. The zero part includes the same predictors as main effects.
+
+### 6.3. Test the interaction
+
+```{r part6-anova}
+```
+
+The likelihood-ratio test comparing the interaction model with the additive hurdle model gave χ² = `r sprintf("%.2f", lrt_int[2, "Chisq"])` with `r lrt_int[2, "Chi Df"]` degree of freedom (*p* = `r sprintf("%.3f", lrt_int[2, "Pr(>Chisq)"])`).
+
+The overall test asks whether adding the interaction improves model fit. The follow-up tests estimate the slope in each insurance group and compare the groups at low, average, and high numbers of chronic conditions.
+
+### 6.4. Plot predicted counts
+
+```{r part6-predictions}
+```
+
+```{r}
+#| label: fig-insurance-interaction
+#| fig-cap: "Count-part predictions by chronic conditions and private insurance. Shading shows confidence intervals."
+#| fig-alt: "Two lines show count-part predictions over chronic conditions, one for people with private insurance and one for people without it."
+#| fig-width: 8
+#| fig-height: 5
+pred_int_plot
+```
+
+The plot shows the count part’s mean on the visit scale before the adjustment for positive counts. Schooling is set to its mean, and health and gender are set to their reference levels.
+
+### 6.5. Probe the interaction
+
+```{r part6-slopes}
+```
+
+#### Simple slopes by private insurance
+
+```{r}
+#| label: simple-slopes-insurance
+slope_output <- capture.output({
+  print(slopes_sum)
+  print(slope_comparison)
+})
+cat(trimws(slope_output, which = "right"), sep = "\n")
+```
+
+The slope comparison subtracts the slope for insured people from the slope for uninsured people. The model coefficient subtracts them in the opposite order. That flips the sign and gives the same standard error and Wald *p*-value. Both tests ask whether the two slopes differ.
+
+#### Differences by private insurance at three levels of chronic conditions
+
+```{r part6-effects}
+```
+
+```{r}
+#| label: count-means-insurance
+count_output <- capture.output(print(insurance_counts))
+cat(trimws(count_output, which = "right"), sep = "\n")
+```
+
+Both sets of predictions use the count part’s mean before the adjustment for positive counts. The plot uses the reference levels for health and gender, while `emmeans` averages over those groups. This can change the predicted means. The health and gender terms cancel when comparing insurance groups on the log scale, so the log contrasts agree.
+
+### 6.6. Report the simple effects
+
+```{r part6-table}
+```
+
+```{r}
+#| label: tbl-insurance-simple-effects
+insurance_effects_table
+```
+
+### 6.7. Interpret the interaction
+
+<!--
+Explain whether the relationship between chronic conditions and visits differs
+by private insurance. Consider the overall test, the slopes, and the group
+comparisons at the three probing values.
+-->
+
+## Part 7. Write up and discuss the findings
+
+### 7.1. Results
+
+```{r part7-results}
+#| include: false
+```
+
+Physician office visits averaged `r sprintf("%.2f", visits_summary$mean)` (*s*² = `r sprintf("%.2f", visits_summary$var)`), and `r sprintf("%.1f", 100 * visits_summary$p_zero)`% of participants had no visits. The full Poisson model had a dispersion ratio of `r sprintf("%.2f", disp_pois$statistic)` (simulation *p* = `r disp_pois$p.value`) and a zero ratio of `r sprintf("%.2f", zi_pois$statistic)` (simulation *p* = `r zi_pois$p.value`). NB2 fit better, χ²(`r lrt_nb[2, "Chi Df"]`) = `r formatC(lrt_nb[2, "Chisq"], format = "f", digits = 2, big.mark = ",")`, `r format_apa_p(lrt_nb[2, "Pr(>Chisq)"])`. Its dispersion ratio was `r sprintf("%.2f", disp_nb$statistic)` (`r format_apa_p(disp_nb$p.value)`), and its zero ratio was `r sprintf("%.2f", zi_nb$statistic)` (`r format_apa_p(zi_nb$p.value)`). NB2 still expected too few zeros, so I chose the hurdle model, which had the lowest AIC and BIC and closely matched the observed number of zeros.
+
+Holding the other predictors constant, more chronic conditions (`r hurdle_report[["cond.chronic"]]`), more schooling (`r hurdle_report[["cond.school"]]`), and private insurance (`r hurdle_report[["cond.insuranceyes"]]`) were associated with more visits in the count part of the model. Compared with average health, poor health was associated with more visits (`r hurdle_report[["cond.healthpoor"]]`) and excellent health with fewer (`r hurdle_report[["cond.healthexcellent"]]`). The estimated count was higher for women than men, with an inconclusive difference (`r hurdle_report[["cond.genderfemale"]]`). In the zero part, the odds of having no visits were lower for people with more chronic conditions (`r hurdle_report[["zi.chronic"]]`), women (`r hurdle_report[["zi.genderfemale"]]`), people with more schooling (`r hurdle_report[["zi.school"]]`), and people with private insurance (`r hurdle_report[["zi.insuranceyes"]]`). Compared with average health, excellent health was associated with higher odds of no visits (`r hurdle_report[["zi.healthexcellent"]]`), and the estimated lower odds for poor health were inconclusive (`r hurdle_report[["zi.healthpoor"]]`).
+
+Adding the chronic conditions × private insurance interaction gave χ²(`r lrt_int[2, "Chi Df"]`) = `r sprintf("%.2f", lrt_int[2, "Chisq"])`, `r format_apa_p(lrt_int[2, "Pr(>Chisq)"])`. The chronic conditions slope was positive for people without private insurance (`r slopes_report[["no"]]`) and for those with it (`r slopes_report[["yes"]]`). The log contrasts (no insurance minus insurance) were `r insurance_report[1]` at one SD below the mean, `r insurance_report[2]` at the mean, and `r insurance_report[3]` at one SD above the mean. The insured group had higher count estimates at all the values tested, with the largest gap on the log scale at the low value and little evidence that the slopes differed.
+
+### 7.2. Discussion
+
+Chronic conditions and private insurance were related to both whether people visited a doctor and how many visits they had. Among people who visited, those in poor health tended to have more visits, and those in excellent health tended to have fewer, compared with people in average health. The data come from a historical U.S. survey of older adults, and the results describe associations. Other factors, such as illness severity or access to care, may also matter. The hurdle model still underestimated how much visit counts varied.

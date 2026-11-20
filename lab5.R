@@ -263,3 +263,130 @@ print(zi_hurd)
 if (interactive()) {
   plot(res_hurd)
 }
+
+# Part 6. Test and probe an interaction
+
+## ----part6-interaction
+m_hurd_int <- glmmTMB(
+  visits ~ chronic * insurance + health + gender + school,
+  ziformula = ~ chronic + health + gender + school + insurance,
+  data = data,
+  family = truncated_nbinom2(link = "log")
+)
+
+## ----part6-anova
+lrt_int <- anova(m_hurd, m_hurd_int)
+
+## ----part6-predictions
+pred_int <- predict_response(
+  m_hurd_int,
+  terms = c("chronic [all]", "insurance"),
+  type = "fixed",
+  condition = c(school = mean(data$school))
+)
+
+insurance_colours <- c(no = "#93502C", yes = "#17618A")
+insurance_labels <- c(no = "No", yes = "Yes")
+
+pred_int_plot <- plot(pred_int) +
+  scale_colour_manual(values = insurance_colours, labels = insurance_labels) +
+  scale_fill_manual(values = insurance_colours, labels = insurance_labels) +
+  labs(
+    title = "Count-part predictions by chronic conditions and insurance",
+    x = "Number of chronic conditions",
+    y = "Count-part mean",
+    colour = "Private insurance",
+    fill = "Private insurance"
+  )
+
+## ----part6-slopes
+slopes_int <- emtrends(
+  m_hurd_int,
+  specs = ~ insurance,
+  var = "chronic",
+  component = "cond"
+)
+
+slopes_sum <- summary(slopes_int, infer = TRUE)
+slope_comparison <- summary(pairs(slopes_int))
+
+## ----part6-effects
+chronic_mean <- mean(data$chronic)
+chronic_sd <- sd(data$chronic)
+chronic_values <- chronic_mean + c(-1, 0, 1) * chronic_sd
+
+insurance_emmeans <- emmeans(
+  m_hurd_int,
+  specs = ~ insurance | chronic,
+  at = list(chronic = chronic_values),
+  component = "cond"
+)
+
+insurance_counts <- summary(insurance_emmeans, type = "response")
+insurance_effects <- summary(pairs(insurance_emmeans))
+
+## ----part6-table
+insurance_effects_df <- insurance_effects |>
+  as.data.frame() |>
+  mutate(
+    chronic_level = c("−1 SD", "Mean", "+1 SD")[match(round(chronic, 6), round(chronic_values, 6))],
+    chronic_level = paste0(chronic_level, " (", sprintf("%.2f", chronic), ")")
+  ) |>
+  select(chronic_level, contrast, estimate, SE, z.ratio, p.value)
+
+insurance_effects_table <- insurance_effects_df |>
+  gt() |>
+  tab_header(title = "Simple effects of private insurance") |>
+  cols_label(
+    chronic_level = "Chronic conditions",
+    contrast = "Contrast",
+    estimate = "Log contrast",
+    SE = "SE",
+    z.ratio = "z",
+    p.value = "p"
+  ) |>
+  fmt_number(columns = c(estimate, SE, z.ratio), decimals = 3) |>
+  fmt(columns = p.value, fns = function(x) scales::pvalue(x, accuracy = .001)) |>
+  tab_source_note("Tests are computed on the log scale of the count part of the model.")
+
+## ----part6-console
+print(lrt_int)
+print(summary(m_hurd_int)$coefficients$cond)
+print(slopes_sum)
+print(slope_comparison)
+print(insurance_counts)
+print(insurance_effects)
+
+if (interactive()) {
+  print(pred_int_plot)
+}
+
+# Part 7. Write up and discuss the findings
+
+## ----part7-results
+# Format estimates for inline reporting without rounding the stored results.
+format_apa_p <- function(p) {
+  ifelse(p < .001, "*p* < .001", paste0("*p* = ", sub("^0", "", sprintf("%.3f", p))))
+}
+
+format_apa_b <- function(estimate, lower, upper, p) {
+  sprintf("*b* = %.3f, 95%% CI [%.3f, %.3f], %s", estimate, lower, upper, format_apa_p(p))
+}
+
+hurdle_effects <- broom.mixed::tidy(m_hurd, effects = "fixed", conf.int = TRUE) |>
+  filter(term != "(Intercept)")
+
+hurdle_report <- with(
+  hurdle_effects,
+  setNames(format_apa_b(estimate, conf.low, conf.high, p.value), paste(component, term, sep = "."))
+)
+
+slopes_report <- with(
+  slopes_sum,
+  setNames(format_apa_b(chronic.trend, asymp.LCL, asymp.UCL, p.value), insurance)
+)
+
+insurance_report <- with(
+  insurance_effects,
+  sprintf("%.3f (%s)", estimate, format_apa_p(p.value))
+)
