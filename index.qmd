@@ -59,15 +59,60 @@ visits_table
 descriptive_plot
 ```
 
+The outcome is a count of physician office visits, so it takes whole-number values starting at zero. About `r round(100 * visits_summary$p_zero, 1)`% of participants had no visits. Most people had few visits, but the chart has a long tail to the right, with a few high counts and a maximum of `r visits_summary$max` visits. The variance (`r round(visits_summary$var, 2)`) is much higher than the mean (`r round(visits_summary$mean, 2)`), so I’ll check whether the Poisson model can account for that much variation.
+
+## Part 2. Specify competing count models
+
+### 2.1. Why not a linear model?
+
+```{r part2-gaussian}
+```
+
+```{r}
+#| label: fig-gaussian-dharma
+#| fig-cap: "DHARMa residual diagnostics for the Gaussian model."
+#| fig-alt: "DHARMa plot with a residual Q–Q plot and a residuals-versus-predicted plot."
+#| fig-width: 9
+#| fig-height: 4.5
+plot(res_gauss)
+```
+
 ```{=html}
 <!--
-Write your paragraph here. Address whether visits are a count, how the variance
-compares with the mean, how many participants had no visits, and whether the
-distribution contains unusually large counts. Use inline R for every number.
+Write your paragraph here. Describe what you see in the DHARMa plots and
+explain why a Gaussian model with an identity link is a poor fit for visit counts.
+-->
+```
 
-Mean: `r round(visits_summary$mean, 2)`
-Variance: `r round(visits_summary$var, 2)`
-Proportion with zero visits: `r round(100 * visits_summary$p_zero, 2)`%
-Maximum: `r visits_summary$max`
+### 2.2. Specify three nested Poisson models
+
+```{r part2-poisson}
+```
+
+| Model | Predictors |
+|----|----|
+| M0 Null | Intercept only |
+| M1 Chronic | Number of chronic conditions |
+| M2 Full | Chronic conditions, health, gender, schooling, and private insurance |
+
+### 2.3. Compare the fitted models
+
+```{r part2-anova}
+```
+
+```{r part2-table}
+```
+
+```{r}
+#| label: tbl-poisson-comparison
+poisson_table
+```
+
+The comparison of the chronic model with the null model gave χ² = `r sprintf("%.2f", comparison_table$Nested.Chisq.stat[2])` with `r comparison_table$Nested.df[2]` degree of freedom (*p* `r format.pval(comparison_table$Nested.p.value[2], digits = 3, eps = .001)`). The comparison of the full model with the chronic model gave χ² = `r sprintf("%.2f", comparison_table$Nested.Chisq.stat[3])` with `r comparison_table$Nested.df[3]` degrees of freedom (*p* `r format.pval(comparison_table$Nested.p.value[3], digits = 3, eps = .001)`).
+
+```{=html}
+<!--
+Explain what each likelihood-ratio test tells you. Choose a provisional Poisson
+model and explain your choice.
 -->
 ```

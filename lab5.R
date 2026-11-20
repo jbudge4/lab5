@@ -65,3 +65,82 @@ print(visits_summary)
 if (interactive()) {
   print(descriptive_plot)
 }
+
+# Part 2. Specify competing count models
+
+## ----part2-gaussian
+m_gauss <- glmmTMB(
+  visits ~ chronic + health + gender + school + insurance,
+  data = data,
+  family = gaussian(link = "identity")
+)
+
+# Use the demonstration's seed for this and later DHARMa checks.
+dharma_seed <- 9041
+res_gauss <- simulateResiduals(m_gauss, n = 500, plot = FALSE, seed = dharma_seed)
+
+## ----part2-poisson
+# M0: Intercept only.
+m0_null <- glmmTMB(
+  visits ~ 1,
+  data = data,
+  family = poisson(link = "log")
+)
+
+# M1: Number of chronic conditions.
+m1_chronic <- glmmTMB(
+  visits ~ chronic,
+  data = data,
+  family = poisson(link = "log")
+)
+
+# M2: All five predictors.
+m2_full <- glmmTMB(
+  visits ~ chronic + health + gender + school + insurance,
+  data = data,
+  family = poisson(link = "log")
+)
+
+## ----part2-anova
+tests <- anova(m0_null, m1_chronic, m2_full)
+
+comparison_table <- tests |>
+  as.data.frame() |>
+  mutate(Model = c("M0: Null", "M1: Chronic", "M2: Full")) |>
+  select(Model, AIC, BIC, logLik, Chisq, `Chi Df`, `Pr(>Chisq)`) |>
+  rename(
+    Nested.df = `Chi Df`,
+    Nested.Chisq.stat = Chisq,
+    Nested.p.value = `Pr(>Chisq)`
+  )
+
+## ----part2-table
+poisson_table <- comparison_table |>
+  gt() |>
+  tab_header(title = "Likelihood-ratio tests for the nested Poisson models") |>
+  cols_label(
+    logLik = "Log-likelihood",
+    Nested.df = "df",
+    Nested.Chisq.stat = "χ²",
+    Nested.p.value = "p-value"
+  ) |>
+  fmt_number(
+    columns = c(AIC, BIC, logLik, Nested.Chisq.stat),
+    decimals = 2
+  ) |>
+  fmt(
+    columns = Nested.p.value,
+    fns = function(x) format.pval(x, digits = 3, eps = .001)
+  ) |>
+  sub_missing(
+    columns = c(Nested.df, Nested.Chisq.stat, Nested.p.value),
+    missing_text = "—"
+  ) |>
+  tab_source_note("Each test compares the model in that row with the model above it.")
+
+## ----part2-console
+print(tests)
+
+if (interactive()) {
+  plot(res_gauss)
+}
