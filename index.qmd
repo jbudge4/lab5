@@ -77,12 +77,7 @@ The outcome is a count of physician office visits, so it takes whole-number valu
 plot(res_gauss)
 ```
 
-```{=html}
-<!--
-Write your paragraph here. Describe what you see in the DHARMa plots and
-explain why a Gaussian model with an identity link is a poor fit for visit counts.
--->
-```
+Both DHARMa plots suggest that the Gaussian model fits the visit counts poorly. In the Q–Q plot, the black points curve away from the red diagonal, so the residuals look different from what we would expect with a good fit. In the right panel, the middle red curve stays below the middle dashed line, suggesting that the model tends to predict too many visits. The outer curves spread farther apart at higher predicted visit counts, and the stars mark observed counts higher than all the simulations for those people. This linear model assumes that the expected count changes by a fixed amount for each extra unit of a numeric predictor. It also assumes bell-shaped errors with the same spread at every prediction and can simulate negative values. The real visit counts are whole numbers starting at zero, with many low counts and a few very high ones.
 
 ### 2.2. Specify three nested Poisson models
 
@@ -110,9 +105,4 @@ poisson_table
 
 The comparison of the chronic model with the null model gave χ² = `r sprintf("%.2f", comparison_table$Nested.Chisq.stat[2])` with `r comparison_table$Nested.df[2]` degree of freedom (*p* `r format.pval(comparison_table$Nested.p.value[2], digits = 3, eps = .001)`). The comparison of the full model with the chronic model gave χ² = `r sprintf("%.2f", comparison_table$Nested.Chisq.stat[3])` with `r comparison_table$Nested.df[3]` degrees of freedom (*p* `r format.pval(comparison_table$Nested.p.value[3], digits = 3, eps = .001)`).
 
-```{=html}
-<!--
-Explain what each likelihood-ratio test tells you. Choose a provisional Poisson
-model and explain your choice.
--->
-```
+The likelihood-ratio tests showed that adding chronic conditions improved the fit over the null model. Adding health, gender, schooling, and insurance improved the fit further. I chose M2 as the Poisson model to carry forward because it had the highest (least negative) log-likelihood, so it fit the observed visit counts best of the three models. M2 also had the lowest AIC and BIC, so it was still preferred after accounting for the extra predictors. I’ll check how well M2 fits the data in Part 3.
