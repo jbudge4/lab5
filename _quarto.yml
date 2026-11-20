@@ -1,0 +1,21 @@
+project:
+  type: website
+  output-dir: docs
+  render:
+    - index.qmd
+
+website:
+  title: "Lab 5"
+
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    embed-resources: true
+    code-tools: true
+    code-fold: true
+
+execute:
+  echo: true
+  warning: false
+  message: false

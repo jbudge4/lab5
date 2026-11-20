@@ -1,0 +1,73 @@
+---
+title: "Lab 5 Count Regression"
+
+author: "Josh Budge"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    embed-resources: true
+    code-tools: true
+editor: visual
+execute:
+  warning: false
+  message: false
+  echo: false
+---
+
+## Part 1. Configure your project and examine the data
+
+### 1.2. Load the required packages
+
+```{r setup}
+#| include: false
+knitr::read_chunk("lab5.R")
+```
+
+```{r part1-packages}
+```
+
+### 1.3. Load the dataset
+
+```{r part1-data}
+```
+
+The `NMES1988` dataset contains `r format(nrow(data), big.mark = ",")` respondents from the US National Medical Expenditure Survey. The outcome is the number of physician office visits. The predictors are number of chronic conditions, self-perceived health, gender, years of education, and private insurance coverage.
+
+The reference groups are **average** for health, **male** for gender, and **no** for private insurance.
+
+### 1.4. Explore the data
+
+```{r part1-describe}
+```
+
+```{r part1-table}
+```
+
+```{r}
+#| label: tbl-visits-summary
+visits_table
+```
+
+```{r part1-plot}
+```
+
+```{r}
+#| label: fig-visits-distribution
+#| fig-cap: "Distribution of physician office visits."
+#| fig-alt: "Bar chart counting participants at each observed number of physician office visits."
+descriptive_plot
+```
+
+```{=html}
+<!--
+Write your paragraph here. Address whether visits are a count, how the variance
+compares with the mean, how many participants had no visits, and whether the
+distribution contains unusually large counts. Use inline R for every number.
+
+Mean: `r round(visits_summary$mean, 2)`
+Variance: `r round(visits_summary$var, 2)`
+Proportion with zero visits: `r round(100 * visits_summary$p_zero, 2)`%
+Maximum: `r visits_summary$max`
+-->
+```
